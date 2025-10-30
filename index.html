@@ -16,9 +16,9 @@
 <div id="root"></div>
 
 <script>
-const { useState, useMemo } = React;
+const { useState, useMemo, useEffect } = React;
 
-// Initial sample data
+// Sample data
 const initialData = [
   {
     id: '1',
@@ -51,27 +51,32 @@ const initialData = [
       "As last resort, initiate password reset"
     ],
     tips: "Common causes: Caps Lock on, autofill using old password, account temporarily locked."
+  },
+  {
+    id: '3',
+    brand: "StyleHub",
+    category: "Orders",
+    subcategory: "Order Tracking",
+    title: "Tracking Order Status",
+    steps: [
+      "Get order number from customer",
+      "Search order in Order Management System",
+      "Provide current status: Processing/Shipped/In Transit/Delivered",
+      "Share tracking number if available",
+      "Provide carrier website link for detailed tracking",
+      "Give estimated delivery date based on shipping method"
+    ],
+    tips: "Standard shipping: 5-7 business days, Express: 2-3 business days. Tracking updates may lag by 24 hours."
   }
 ];
 
-// Cheat Sheet Component
 function SupportCheatSheet() {
-  const [data, setData] = useState(initialData);
+  const [data] = useState(initialData);
   const [selectedBrand, setSelectedBrand] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAdmin, setShowAdmin] = useState(false);
 
-  // Admin form state
-  const [newBrand, setNewBrand] = useState('');
-  const [newCategory, setNewCategory] = useState('');
-  const [newSubcategory, setNewSubcategory] = useState('');
-  const [newTitle, setNewTitle] = useState('');
-  const [newSteps, setNewSteps] = useState('');
-  const [newTips, setNewTips] = useState('');
-
-  // Unique dropdowns
   const brands = useMemo(() => [...new Set(data.map(d => d.brand))], [data]);
   const categories = useMemo(() => selectedBrand ? [...new Set(data.filter(d => d.brand===selectedBrand).map(d=>d.category))] : [], [selectedBrand, data]);
   const subcategories = useMemo(() => (selectedBrand && selectedCategory) ? [...new Set(data.filter(d => d.brand===selectedBrand && d.category===selectedCategory).map(d=>d.subcategory))] : [], [selectedBrand, selectedCategory, data]);
@@ -90,37 +95,12 @@ function SupportCheatSheet() {
     setSelectedBrand(''); setSelectedCategory(''); setSelectedSubcategory(''); setSearchTerm('');
   }
 
-  function addEntry() {
-    if(!newBrand || !newCategory || !newSubcategory || !newTitle || !newSteps) {
-      alert("Please fill all fields except tips.");
-      return;
-    }
-    const newEntry = {
-      id: (data.length + 1).toString(),
-      brand: newBrand,
-      category: newCategory,
-      subcategory: newSubcategory,
-      title: newTitle,
-      steps: newSteps.split('\n').map(s => s.trim()).filter(s => s),
-      tips: newTips
-    };
-    setData([...data, newEntry]);
-    // Reset form
-    setNewBrand(''); setNewCategory(''); setNewSubcategory('');
-    setNewTitle(''); setNewSteps(''); setNewTips('');
-  }
-
   return React.createElement('div', { className: "min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8 font-sans" },
     React.createElement('div', { className: "max-w-5xl mx-auto" },
       // Header
-      React.createElement('div', { className: "bg-white p-6 rounded-lg shadow mb-6 flex justify-between items-center" },
-        React.createElement('div', null,
-          React.createElement('h1', { className: "text-2xl font-bold mb-1" }, "Support Agent Cheat Sheet"),
-          React.createElement('p', { className: "text-gray-600" }, "Quick answers and step-by-step guides")
-        ),
-        React.createElement('button', { onClick: () => setShowAdmin(!showAdmin), className: "px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700" },
-          showAdmin ? "View Mode" : "Admin Mode"
-        )
+      React.createElement('div', { className: "bg-white p-6 rounded-lg shadow mb-6" },
+        React.createElement('h1', { className: "text-2xl font-bold mb-1" }, "Support Agent Cheat Sheet"),
+        React.createElement('p', { className: "text-gray-600" }, "Quick answers and step-by-step guides")
       ),
       // Filters
       React.createElement('div', { className: "bg-white p-4 rounded-lg shadow mb-6 grid md:grid-cols-4 gap-4 items-end" },
@@ -139,7 +119,38 @@ function SupportCheatSheet() {
         ),
         React.createElement('button', { onClick: resetFilters, className: "bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 w-full md:col-span-4" }, "Reset Filters")
       ),
-      // Admin Mode form
-      showAdmin && React.createElement('div', { className: "bg-white p-4 rounded-lg shadow mb-6 space-y-2" },
-        React.createElement('h2', { className: "font-bold text-lg mb-2" }, "Add New Entry"),
-        React.createElement('input', { type: "text", placeholder: "Brand
+      // Results
+      React.createElement('div', { className: "space-y-4" },
+        filteredData.length === 0 ? React.createElement('div', { className: "bg-white p-6 rounded shadow text-center text-gray-500" }, "No results found") :
+        filteredData.map(item =>
+          React.createElement('div', { 
+            key: item.id, 
+            className: "bg-white p-6 rounded shadow transform transition-all duration-500 opacity-0 translate-y-4",
+            ref: el => { if(el) setTimeout(()=>el.classList.remove('opacity-0','translate-y-4'),10) } // fade-in animation
+          },
+            React.createElement('div', { className: "flex flex-wrap gap-2 mb-2" },
+              React.createElement('span', { className: "px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs" }, item.brand),
+              React.createElement('span', { className: "px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs" }, item.category),
+              React.createElement('span', { className: "px-2 py-1 bg-green-100 text-green-800 rounded text-xs" }, item.subcategory)
+            ),
+            React.createElement('h2', { className: "text-xl font-bold mb-2" }, item.title),
+            React.createElement('ol', { className: "list-decimal list-inside space-y-1 mb-2" },
+              item.steps.map((s,i) => React.createElement('li', { key: i }, s))
+            ),
+            item.tips ? React.createElement('div', { className: "bg-yellow-50 border-l-4 border-yellow-400 p-2 rounded text-yellow-700" }, "💡 ", item.tips) : null
+          )
+        )
+      )
+    )
+  );
+}
+
+// Render
+ReactDOM.render(
+  React.createElement(SupportCheatSheet),
+  document.getElementById('root')
+);
+</script>
+
+</body>
+</html>
