@@ -1,241 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Support Cheat Sheet</title>
-
-<!-- Production React -->
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-
-<!-- Tailwind CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
-
 <style>
-/* small extra CSS for smoother card highlight glow */
-.card-glow {
-  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.18), 0 2px 6px rgba(15, 23, 42, 0.06);
-  border: 1px solid rgba(99,102,241,0.18);
-}
-.dim-overlay {
-  transition: background-color .25s ease;
-}
+  body { transition: background 0.3s ease; }
+  .card { 
+    transition: all 0.3s ease; 
+    cursor: pointer;
+  }
+  .card:hover {
+    transform: scale(1.03);
+    z-index: 20;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+  }
+  .dimmed {
+    opacity: 0.3;
+    filter: blur(1px);
+  }
+  .view-active {
+    background-color: #2563eb;
+    color: white;
+  }
 </style>
 </head>
-<body class="bg-white">
-<div id="root"></div>
+<body class="bg-white text-gray-900 min-h-screen p-6">
+  <div class="max-w-5xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold">Support Cheat Sheet</h1>
+      <div class="flex gap-2">
+        <button id="listView" class="px-3 py-1 border rounded hover:bg-gray-100">📋 List</button>
+        <button id="boardView" class="px-3 py-1 border rounded hover:bg-gray-100">🧱 Board</button>
+        <button id="detailView" class="px-3 py-1 border rounded hover:bg-gray-100">📖 Detailed</button>
+      </div>
+    </div>
+
+    <div class="flex gap-3 mb-5">
+      <select id="brand" class="border p-2 rounded w-1/3">
+        <option value="">Select Brand</option>
+        <option value="Vuse">Vuse</option>
+        <option value="Glo">Glo</option>
+      </select>
+      <select id="issue" class="border p-2 rounded w-1/3">
+        <option value="">Select Issue</option>
+        <option value="Lost Order">Lost Order</option>
+        <option value="Device Not Connecting">Device Not Connecting</option>
+      </select>
+      <button id="searchBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Search</button>
+    </div>
+
+    <div id="articlesContainer" class="grid gap-4 transition-all duration-500"></div>
+  </div>
 
 <script>
-const { useState, useMemo, useEffect } = React;
-
-/* ---------- sample data ---------- */
-const initialData = [
-  {
-    id: '1', brand: "TechCorp", category: "Account Issues", subcategory: "Password Reset",
-    title: "How to Reset Password",
-    steps: [
-      "Ask customer to navigate to login page",
-      "Click 'Forgot Password' link below login button",
-      "Enter registered email address",
-      "Check email inbox (and spam folder) for reset link",
-      "Click the link and create new password (min 8 characters, 1 uppercase, 1 number)",
-      "Confirm successful login with new password"
-    ],
-    tips: "Password reset links expire after 24 hours. If customer doesn't receive the email, check their spam folder."
-  },
-  {
-    id: '2', brand: "TechCorp", category: "Account Issues", subcategory: "Login Errors",
-    title: "Troubleshooting Login Errors",
-    steps: [
-      "Verify customer is using correct email address",
-      "Ask customer to clear browser cache and cookies",
-      "Try incognito/private browsing mode",
-      "Check if account is locked due to multiple failed attempts",
-      "Verify two-factor authentication if enabled",
-      "As last resort, initiate password reset"
-    ],
-    tips: "Common causes: Caps Lock, outdated autofill, or temporary account lock."
-  },
-  {
-    id: '3', brand: "StyleHub", category: "Orders", subcategory: "Order Tracking",
-    title: "Tracking Order Status",
-    steps: [
-      "Get order number from customer",
-      "Search order in Order Management System",
-      "Provide current status: Processing/Shipped/In Transit/Delivered",
-      "Share tracking number if available",
-      "Provide carrier website link for detailed tracking",
-      "Give estimated delivery date based on shipping method"
-    ],
-    tips: "Standard shipping: 5-7 business days. Tracking updates may lag up to 24 hours."
-  }
-];
-
-/* ---------- Main component (no JSX) ---------- */
-function SupportCheatSheet () {
-  const [data] = useState(initialData);
-  const [selectedBrand, setSelectedBrand] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedSubcategory, setSelectedSubcategory] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [view, setView] = useState('list'); // 'list' | 'board' | 'detailed'
-  const [showItems, setShowItems] = useState([]); // stagger reveal ids
-  const [hoveredId, setHoveredId] = useState(null);
-
-  const brands = useMemo(() => [...new Set(data.map(d => d.brand))], [data]);
-  const categories = useMemo(() => selectedBrand ? [...new Set(data.filter(d => d.brand===selectedBrand).map(d => d.category))] : [], [selectedBrand, data]);
-  const subcategories = useMemo(() => (selectedBrand && selectedCategory) ? [...new Set(data.filter(d => d.brand===selectedBrand && d.category===selectedCategory).map(d => d.subcategory))] : [], [selectedBrand, selectedCategory, data]);
-
-  const filteredData = useMemo(() => {
-    const q = (searchTerm || '').trim().toLowerCase();
-    return data.filter(d =>
-      (!selectedBrand || d.brand === selectedBrand) &&
-      (!selectedCategory || d.category === selectedCategory) &&
-      (!selectedSubcategory || d.subcategory === selectedSubcategory) &&
-      (!q || d.title.toLowerCase().includes(q) || d.steps.some(s => s.toLowerCase().includes(q)) || (d.tips || '').toLowerCase().includes(q))
-    );
-  }, [data, selectedBrand, selectedCategory, selectedSubcategory, searchTerm]);
-
-  // stagger reveal on filteredData change
-  useEffect(() => {
-    setShowItems([]);
-    // small delay to allow CSS transitions to reset
-    filteredData.forEach((it, idx) => {
-      setTimeout(() => setShowItems(prev => [...prev, it.id]), idx * 90);
-    });
-  }, [filteredData, view]);
-
-  function resetFilters () {
-    setSelectedBrand(''); setSelectedCategory(''); setSelectedSubcategory(''); setSearchTerm('');
-  }
-
-  // helper: highlight matched keywords in text (returns array of nodes via React.createElement)
-  function highlightText(text, q) {
-    if(!q) return text;
-    const lower = text.toLowerCase();
-    const ql = q.toLowerCase();
-    let parts = [], last = 0;
-    let idx = lower.indexOf(ql, last);
-    while(idx !== -1) {
-      if(idx > last) parts.push(text.slice(last, idx));
-      parts.push( React.createElement('mark', { key: last, className: "bg-yellow-200 rounded px-0.5" }, text.slice(idx, idx+ql.length)) );
-      last = idx + ql.length;
-      idx = lower.indexOf(ql, last);
+  const articles = [
+    {
+      brand: "Vuse",
+      issue: "Lost Order",
+      title: "Vuse - Lost Order",
+      content: "Advise customer to contact support with order ID. Usually replaced or refunded within 5 business days."
+    },
+    {
+      brand: "Vuse",
+      issue: "Device Not Connecting",
+      title: "Vuse - Device Connection Troubleshooting",
+      content: "Ensure Bluetooth is enabled, device is charged, and app permissions are granted. Restart both device and phone."
+    },
+    {
+      brand: "Glo",
+      issue: "Device Not Connecting",
+      title: "Glo Device Connectivity Help",
+      content: "Try removing and re-pairing the device. Hold power for 10 seconds, then re-add it in the app."
     }
-    if(last < text.length) parts.push(text.slice(last));
-    return parts;
-  }
+  ];
 
-  /* ---------- Render ---------- */
-  return React.createElement('div', { className: "min-h-screen p-6 md:p-10 bg-white" },
-    React.createElement('div', { className: "max-w-6xl mx-auto" },
+  const articlesContainer = document.getElementById("articlesContainer");
+  const searchBtn = document.getElementById("searchBtn");
+  const brand = document.getElementById("brand");
+  const issue = document.getElementById("issue");
 
-      // header + view controls
-      React.createElement('div', { className: "flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6" },
-        React.createElement('div', { className: "space-y-1" },
-          React.createElement('h1', { className: "text-2xl font-semibold text-slate-900" }, "Support Agent Cheat Sheet"),
-          React.createElement('p', { className: "text-sm text-slate-500" }, "Quick answers, now with better UI and views")
-        ),
-        React.createElement('div', { className: "flex items-center gap-2" },
-          // view buttons
-          ['list','board','detailed'].map(v =>
-            React.createElement('button', {
-              key: v,
-              onClick: () => setView(v),
-              className: `px-3 py-1.5 rounded-md text-sm font-medium transition transform ${view === v ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-white text-slate-700 border border-slate-200 hover:scale-105' }`
-            }, v === 'list' ? 'List' : v === 'board' ? 'Board' : 'Detailed')
-          )
-        )
-      ),
+  const listBtn = document.getElementById("listView");
+  const boardBtn = document.getElementById("boardView");
+  const detailBtn = document.getElementById("detailView");
 
-      // filters
-      React.createElement('div', { className: "bg-white p-4 rounded-lg shadow mb-6 grid md:grid-cols-4 gap-4 items-end" },
-        React.createElement('input', {
-          type: "text",
-          placeholder: "Search title / steps / tips...",
-          value: searchTerm,
-          onChange: e => setSearchTerm(e.target.value),
-          className: "col-span-4 md:col-span-4 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
-        }),
-        React.createElement('select', {
-          value: selectedBrand,
-          onChange: e => { setSelectedBrand(e.target.value); setSelectedCategory(''); setSelectedSubcategory(''); },
-          className: "border rounded px-3 py-2 hover:scale-105 transition transform"
-        },
-          React.createElement('option', { value: "" }, "All Brands"),
-          brands.map(b => React.createElement('option', { key: b, value: b }, b))
-        ),
-        React.createElement('select', {
-          value: selectedCategory,
-          onChange: e => { setSelectedCategory(e.target.value); setSelectedSubcategory(''); },
-          disabled: !selectedBrand,
-          className: "border rounded px-3 py-2 disabled:opacity-50 hover:scale-105 transition transform"
-        },
-          React.createElement('option', { value: "" }, "All Categories"),
-          categories.map(c => React.createElement('option', { key: c, value: c }, c))
-        ),
-        React.createElement('select', {
-          value: selectedSubcategory,
-          onChange: e => setSelectedSubcategory(e.target.value),
-          disabled: !selectedCategory,
-          className: "border rounded px-3 py-2 disabled:opacity-50 hover:scale-105 transition transform"
-        },
-          React.createElement('option', { value: "" }, "All Subcategories"),
-          subcategories.map(s => React.createElement('option', { key: s, value: s }, s))
-        ),
-        React.createElement('button', {
-          onClick: resetFilters,
-          className: "md:col-span-4 bg-gray-100 px-4 py-2 rounded-md hover:bg-gray-200 active:scale-95 transition"
-        }, "Reset Filters")
-      ),
+  let currentView = "board";
 
-      // results wrapper - we dim background when hovering a card
-      React.createElement('div', { className: "relative" },
-        // semi-transparent full width dim layer (only visible when hovered)
-        React.createElement('div', {
-          className: `absolute inset-0 pointer-events-none transition-opacity duration-300 ${hoveredId ? 'opacity-40 bg-slate-100' : 'opacity-0' } rounded-lg`
-        }),
+  const setView = (view) => {
+    currentView = view;
+    [listBtn, boardBtn, detailBtn].forEach(btn => btn.classList.remove("view-active"));
+    if (view === "list") listBtn.classList.add("view-active");
+    if (view === "board") boardBtn.classList.add("view-active");
+    if (view === "detail") detailBtn.classList.add("view-active");
+    renderArticles();
+  };
 
-        // container for different views
-        React.createElement('div', {
-          className: `${view === 'board' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : ''}`
-        },
+  const renderArticles = (results = articles) => {
+    articlesContainer.innerHTML = "";
+    if (currentView === "list") {
+      articlesContainer.className = "flex flex-col gap-3";
+    } else if (currentView === "board") {
+      articlesContainer.className = "grid sm:grid-cols-2 lg:grid-cols-3 gap-4";
+    } else {
+      articlesContainer.className = "grid gap-6";
+    }
 
-          // when no results
-          filteredData.length === 0
-            ? React.createElement('div', { className: "bg-white p-6 rounded shadow text-center text-slate-500" }, "No results found")
-            : filteredData.map(item => {
-                // card base classes + view-specific sizing
-                const base = "bg-white p-5 rounded-lg transition-transform duration-400 ease-out";
-                const viewClass = view === 'list' ? "w-full" : view === 'board' ? "" : "w-full";
-                const hoverOn = hoveredId === item.id;
-                const dimmed = hoveredId && hoveredId !== item.id;
-                const show = showItems.includes(item.id);
+    results.forEach(a => {
+      const card = document.createElement("div");
+      card.className = "card p-4 rounded-lg border bg-white hover:shadow-lg transition-all";
+      card.innerHTML = `<h2 class="font-semibold text-lg mb-2">${a.title}</h2>
+                        <p class="text-gray-700">${a.content}</p>`;
+      articlesContainer.appendChild(card);
+    });
 
-                const cardClasses = `${base} ${viewClass} ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'} ${hoverOn ? 'card-glow scale-102' : ''} ${dimmed ? 'opacity-40' : ''}`;
+    addHoverSpotlight();
+  };
 
-                // build card content
-                return React.createElement('div', {
-                  key: item.id,
-                  onMouseEnter: () => setHoveredId(item.id),
-                  onMouseLeave: () => setHoveredId(null),
-                  className: cardClasses,
-                  style: { transformOrigin: 'center top', transitionProperty: 'transform, opacity, box-shadow' }
-                },
-                  // badges and title row
-                  React.createElement('div', { className: "flex items-center justify-between gap-2 mb-3" },
-                    React.createElement('div', { className: "flex flex-wrap gap-2 items-center" },
-                      React.createElement('span', { className: "px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs" }, item.brand),
-                      React.createElement('span', { className: "px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs" }, item.category),
-                      React.createElement('span', { className: "px-2 py-1 bg-green-100 text-green-800 rounded text-xs" }, item.subcategory)
-                    ),
-                    React.createElement('div', { className: "text-sm text-slate-400" }, view === 'detailed' ? React.createElement('span', null, 'Detailed') : null)
-                  ),
+  const addHoverSpotlight = () => {
+    const cards = document.querySelectorAll(".card");
+    cards.forEach(card => {
+      card.addEventListener("mouseenter", () => {
+        cards.forEach(c => { if (c !== card) c.classList.add("dimmed"); });
+        document.body.style.background = "rgba(0,0,0,0.05)";
+      });
+      card.addEventListener("mouseleave", () => {
+        cards.forEach(c => c.classList.remove("dimmed"));
+        document.body.style.background = "white";
+      });
+    });
+  };
 
-                  // title
-                  React.createElement('h2', { className: `text-lg font-semibold mb-2 ${hoverOn ? 'text-indigo-600' : 'text-slate-900'}` }, highlightText(item.title, searchTerm)),
+  searchBtn.addEventListener("click", () => {
+    const filtered = articles.filter(a =>
+      (!brand.value || a.brand === brand.value) &&
+      (!issue.value || a.issue === issue.value)
+    );
+    renderArticles(filtered);
+  });
 
-                  // steps (compact in list, grid/card in board, expanded in detailed)
-                  React.createElement('div', { className: view === 'detailed' ? 'mb-3' : 'mb-2' },
-                    React.
+  listBtn.addEventListener("click", () => setView("list"));
+  boardBtn.addEventListener("click", () => setView("board"));
+  detailBtn.addEventListener("click", () => setView("detail"));
+
+  // Initial load
+  setView("board");
+</script>
+</body>
+</html>
