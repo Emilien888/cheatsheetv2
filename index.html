@@ -1,150 +1,207 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Support Cheat Sheet</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   body { transition: background 0.3s ease; }
-  .card { 
-    transition: all 0.3s ease; 
-    cursor: pointer;
+  .card { transition: all 0.3s ease; cursor: pointer; position: relative; }
+  .card:hover { transform: scale(1.03); z-index: 20; box-shadow: 0 10px 20px rgba(0,0,0,0.25); }
+  .dimmed { opacity: 0.3; filter: blur(1px); }
+  .view-active { background-color: #2563eb; color: white; }
+  .tag { display: inline-block; margin-right: 0.25rem; margin-bottom:0.25rem; padding:0.25rem 0.5rem; border-radius:0.25rem; font-size:0.75rem; font-weight:500; color:white; }
+  .tip { background:#fef3c7; border-left:4px solid #fbbf24; padding:0.25rem 0.5rem; border-radius:0.25rem; font-size:0.875rem; margin-top:0.5rem; }
+
+  /* Overlay */
+  .overlay {
+    position: fixed; top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+    opacity: 0; visibility: hidden; transition: opacity 0.3s ease; z-index: 50;
   }
-  .card:hover {
-    transform: scale(1.03);
-    z-index: 20;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+  .overlay.show { opacity: 1; visibility: visible; }
+  .overlay-content {
+    background: white; border-radius: 0.5rem; padding: 2rem;
+    max-width: 600px; width: 90%; max-height: 80%; overflow-y: auto;
+    position: relative; transform: scale(0.95); transition: transform 0.3s ease;
   }
-  .dimmed {
-    opacity: 0.3;
-    filter: blur(1px);
-  }
-  .view-active {
-    background-color: #2563eb;
-    color: white;
-  }
+  .overlay.show .overlay-content { transform: scale(1); }
+  .close-btn { position: absolute; top: 1rem; right: 1rem; font-weight: bold; cursor: pointer; }
 </style>
 </head>
 <body class="bg-white text-gray-900 min-h-screen p-6">
-  <div class="max-w-5xl mx-auto">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold">Support Cheat Sheet</h1>
-      <div class="flex gap-2">
-        <button id="listView" class="px-3 py-1 border rounded hover:bg-gray-100">📋 List</button>
-        <button id="boardView" class="px-3 py-1 border rounded hover:bg-gray-100">🧱 Board</button>
-        <button id="detailView" class="px-3 py-1 border rounded hover:bg-gray-100">📖 Detailed</button>
-      </div>
+<div class="max-w-5xl mx-auto">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold">Support Cheat Sheet</h1>
+    <div class="flex gap-2">
+      <button id="listView" class="px-3 py-1 border rounded hover:bg-gray-100">📋 List</button>
+      <button id="boardView" class="px-3 py-1 border rounded hover:bg-gray-100">🧱 Board</button>
+      <button id="detailView" class="px-3 py-1 border rounded hover:bg-gray-100">📖 Detailed</button>
     </div>
-
-    <div class="flex gap-3 mb-5">
-      <select id="brand" class="border p-2 rounded w-1/3">
-        <option value="">Select Brand</option>
-        <option value="Vuse">Vuse</option>
-        <option value="Glo">Glo</option>
-      </select>
-      <select id="issue" class="border p-2 rounded w-1/3">
-        <option value="">Select Issue</option>
-        <option value="Lost Order">Lost Order</option>
-        <option value="Device Not Connecting">Device Not Connecting</option>
-      </select>
-      <button id="searchBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Search</button>
-    </div>
-
-    <div id="articlesContainer" class="grid gap-4 transition-all duration-500"></div>
   </div>
 
+  <!-- Filters -->
+  <div class="flex gap-3 mb-5 flex-wrap">
+    <select id="brand" class="border p-2 rounded w-1/3">
+      <option value="">Select Brand</option>
+      <option value="Vuse">Vuse</option>
+      <option value="Glo">Glo</option>
+    </select>
+    <select id="issue" class="border p-2 rounded w-1/3">
+      <option value="">Select Issue</option>
+      <option value="Lost Order">Lost Order</option>
+      <option value="Device Not Connecting">Device Not Connecting</option>
+    </select>
+    <button id="searchBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Search</button>
+    <button id="resetBtn" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 transition">Reset Filters</button>
+  </div>
+
+  <div id="articlesContainer" class="grid gap-4 transition-all duration-500"></div>
+</div>
+
+<!-- Overlay -->
+<div id="overlay" class="overlay">
+  <div class="overlay-content">
+    <span id="closeOverlay" class="close-btn">✕</span>
+    <div id="overlayContent"></div>
+  </div>
+</div>
+
 <script>
-  const articles = [
-    {
-      brand: "Vuse",
-      issue: "Lost Order",
-      title: "Vuse - Lost Order",
-      content: "Advise customer to contact support with order ID. Usually replaced or refunded within 5 business days."
-    },
-    {
-      brand: "Vuse",
-      issue: "Device Not Connecting",
-      title: "Vuse - Device Connection Troubleshooting",
-      content: "Ensure Bluetooth is enabled, device is charged, and app permissions are granted. Restart both device and phone."
-    },
-    {
-      brand: "Glo",
-      issue: "Device Not Connecting",
-      title: "Glo Device Connectivity Help",
-      content: "Try removing and re-pairing the device. Hold power for 10 seconds, then re-add it in the app."
-    }
-  ];
+document.addEventListener("DOMContentLoaded", () => {
 
-  const articlesContainer = document.getElementById("articlesContainer");
-  const searchBtn = document.getElementById("searchBtn");
-  const brand = document.getElementById("brand");
-  const issue = document.getElementById("issue");
+const articles = [
+  {
+    brand: "Vuse",
+    issue: "Lost Order",
+    title: "Vuse - Lost Order",
+    content: "Advise customer to contact support with order ID. Usually replaced or refunded within 5 business days.",
+    tags: ["Urgent", "Orders"],
+    tip: "Check system logs before creating replacement."
+  },
+  {
+    brand: "Vuse",
+    issue: "Device Not Connecting",
+    title: "Vuse - Device Connection Troubleshooting",
+    content: "Ensure Bluetooth is enabled, device is charged, and app permissions are granted. Restart both device and phone.",
+    tags: ["Tech", "Bluetooth"],
+    tip: "Always verify firmware version is latest."
+  },
+  {
+    brand: "Glo",
+    issue: "Device Not Connecting",
+    title: "Glo Device Connectivity Help",
+    content: "Try removing and re-pairing the device. Hold power for 10 seconds, then re-add it in the app.",
+    tags: ["Tech"],
+    tip: "Remind customer to update the app if connection fails."
+  }
+];
 
-  const listBtn = document.getElementById("listView");
-  const boardBtn = document.getElementById("boardView");
-  const detailBtn = document.getElementById("detailView");
+const articlesContainer = document.getElementById("articlesContainer");
+const searchBtn = document.getElementById("searchBtn");
+const resetBtn = document.getElementById("resetBtn");
+const brand = document.getElementById("brand");
+const issue = document.getElementById("issue");
+const listBtn = document.getElementById("listView");
+const boardBtn = document.getElementById("boardView");
+const detailBtn = document.getElementById("detailView");
+const overlay = document.getElementById("overlay");
+const overlayContentDiv = document.getElementById("overlayContent");
+const closeOverlay = document.getElementById("closeOverlay");
 
-  let currentView = "board";
+let currentView = "board";
 
-  const setView = (view) => {
-    currentView = view;
-    [listBtn, boardBtn, detailBtn].forEach(btn => btn.classList.remove("view-active"));
-    if (view === "list") listBtn.classList.add("view-active");
-    if (view === "board") boardBtn.classList.add("view-active");
-    if (view === "detail") detailBtn.classList.add("view-active");
-    renderArticles();
-  };
+const setView = (view) => {
+  currentView = view;
+  [listBtn, boardBtn, detailBtn].forEach(btn => btn.classList.remove("view-active"));
+  if(view==="list") listBtn.classList.add("view-active");
+  if(view==="board") boardBtn.classList.add("view-active");
+  if(view==="detail") detailBtn.classList.add("view-active");
+  renderArticles();
+};
 
-  const renderArticles = (results = articles) => {
-    articlesContainer.innerHTML = "";
-    if (currentView === "list") {
-      articlesContainer.className = "flex flex-col gap-3";
-    } else if (currentView === "board") {
-      articlesContainer.className = "grid sm:grid-cols-2 lg:grid-cols-3 gap-4";
-    } else {
-      articlesContainer.className = "grid gap-6";
-    }
+const renderArticles = (results = articles) => {
+  articlesContainer.innerHTML = "";
+  articlesContainer.className = currentView === "list" ? "flex flex-col gap-3" : currentView === "board" ? "grid sm:grid-cols-2 lg:grid-cols-3 gap-4" : "grid gap-6";
 
-    results.forEach(a => {
-      const card = document.createElement("div");
-      card.className = "card p-4 rounded-lg border bg-white hover:shadow-lg transition-all";
-      card.innerHTML = `<h2 class="font-semibold text-lg mb-2">${a.title}</h2>
-                        <p class="text-gray-700">${a.content}</p>`;
-      articlesContainer.appendChild(card);
-    });
+  results.forEach(a => {
+    const card = document.createElement("div");
+    card.className = "card p-4 rounded-lg border bg-white hover:shadow-lg transition-all";
 
-    addHoverSpotlight();
-  };
+    // Tags HTML
+    const tagHTML = a.tags.map(t => {
+      let colorClass = "bg-blue-500";
+      if(t==="Urgent") colorClass = "bg-red-500";
+      else if(t==="Tech") colorClass = "bg-green-500";
+      return `<span class="tag ${colorClass}">${t}</span>`;
+    }).join(" ");
 
-  const addHoverSpotlight = () => {
-    const cards = document.querySelectorAll(".card");
-    cards.forEach(card => {
-      card.addEventListener("mouseenter", () => {
-        cards.forEach(c => { if (c !== card) c.classList.add("dimmed"); });
-        document.body.style.background = "rgba(0,0,0,0.05)";
-      });
-      card.addEventListener("mouseleave", () => {
-        cards.forEach(c => c.classList.remove("dimmed"));
-        document.body.style.background = "white";
-      });
-    });
-  };
+    card.innerHTML = `
+      <h2 class="font-semibold text-lg mb-2">${a.title}</h2>
+      <p class="text-gray-700 truncate">${a.content}</p>
+      <div class="mt-2">${tagHTML}</div>
+      ${a.tip ? `<div class="tip">💡 ${a.tip}</div>` : ''}
+    `;
 
-  searchBtn.addEventListener("click", () => {
-    const filtered = articles.filter(a =>
-      (!brand.value || a.brand === brand.value) &&
-      (!issue.value || a.issue === issue.value)
-    );
-    renderArticles(filtered);
+    card.addEventListener("click", () => openOverlay(a));
+    articlesContainer.appendChild(card);
   });
+  addHoverSpotlight();
+};
 
-  listBtn.addEventListener("click", () => setView("list"));
-  boardBtn.addEventListener("click", () => setView("board"));
-  detailBtn.addEventListener("click", () => setView("detail"));
+const addHoverSpotlight = () => {
+  const cards = document.querySelectorAll(".card");
+  cards.forEach(card => {
+    card.addEventListener("mouseenter", () => {
+      cards.forEach(c => { if(c!==card) c.classList.add("dimmed"); });
+      document.body.style.background = "rgba(0,0,0,0.05)";
+    });
+    card.addEventListener("mouseleave", () => {
+      cards.forEach(c => c.classList.remove("dimmed"));
+      document.body.style.background = "white";
+    });
+  });
+};
 
-  // Initial load
-  setView("board");
+const openOverlay = (article) => {
+  const tagHTML = article.tags.map(t => {
+    let colorClass = "bg-blue-500";
+    if(t==="Urgent") colorClass = "bg-red-500";
+    else if(t==="Tech") colorClass = "bg-green-500";
+    return `<span class="tag ${colorClass}">${t}</span>`;
+  }).join(" ");
+
+  overlayContentDiv.innerHTML = `
+    <h2 class="text-xl font-bold mb-4">${article.title}</h2>
+    <div class="mb-2">${tagHTML}</div>
+    <p class="text-gray-700 mb-2">${article.content}</p>
+    ${article.tip ? `<div class="tip">💡 ${article.tip}</div>` : ''}
+  `;
+  overlay.classList.add("show");
+};
+
+closeOverlay.addEventListener("click", () => overlay.classList.remove("show"));
+
+searchBtn.addEventListener("click", () => {
+  const filtered = articles.filter(a => (!brand.value || a.brand===brand.value) && (!issue.value || a.issue===issue.value));
+  renderArticles(filtered);
+});
+
+resetBtn.addEventListener("click", () => {
+  brand.value = "";
+  issue.value = "";
+  renderArticles();
+});
+
+listBtn.addEventListener("click", () => setView("list"));
+boardBtn.addEventListener("click", () => setView("board"));
+detailBtn.addEventListener("click", () => setView("detail"));
+
+// Initial
+setView("board");
+
+});
 </script>
 </body>
 </html>
