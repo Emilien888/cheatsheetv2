@@ -1,29 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Support Cheat Sheet</title>
 
 <!-- Production React -->
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
-<!-- Tailwind CSS -->
+<!-- Tailwind CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+/* small extra CSS for smoother card highlight glow */
+.card-glow {
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.18), 0 2px 6px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(99,102,241,0.18);
+}
+.dim-overlay {
+  transition: background-color .25s ease;
+}
+</style>
 </head>
-<body>
+<body class="bg-white">
 <div id="root"></div>
 
 <script>
 const { useState, useMemo, useEffect } = React;
 
+/* ---------- sample data ---------- */
 const initialData = [
   {
-    id: '1',
-    brand: "TechCorp",
-    category: "Account Issues",
-    subcategory: "Password Reset",
+    id: '1', brand: "TechCorp", category: "Account Issues", subcategory: "Password Reset",
     title: "How to Reset Password",
     steps: [
       "Ask customer to navigate to login page",
@@ -33,13 +42,10 @@ const initialData = [
       "Click the link and create new password (min 8 characters, 1 uppercase, 1 number)",
       "Confirm successful login with new password"
     ],
-    tips: "Password reset links expire after 24 hours. If customer doesn't receive email within 5 minutes, check if email address is correct."
+    tips: "Password reset links expire after 24 hours. If customer doesn't receive the email, check their spam folder."
   },
   {
-    id: '2',
-    brand: "TechCorp",
-    category: "Account Issues",
-    subcategory: "Login Errors",
+    id: '2', brand: "TechCorp", category: "Account Issues", subcategory: "Login Errors",
     title: "Troubleshooting Login Errors",
     steps: [
       "Verify customer is using correct email address",
@@ -49,13 +55,10 @@ const initialData = [
       "Verify two-factor authentication if enabled",
       "As last resort, initiate password reset"
     ],
-    tips: "Common causes: Caps Lock on, autofill using old password, account temporarily locked."
+    tips: "Common causes: Caps Lock, outdated autofill, or temporary account lock."
   },
   {
-    id: '3',
-    brand: "StyleHub",
-    category: "Orders",
-    subcategory: "Order Tracking",
+    id: '3', brand: "StyleHub", category: "Orders", subcategory: "Order Tracking",
     title: "Tracking Order Status",
     steps: [
       "Get order number from customer",
@@ -65,99 +68,174 @@ const initialData = [
       "Provide carrier website link for detailed tracking",
       "Give estimated delivery date based on shipping method"
     ],
-    tips: "Standard shipping: 5-7 business days, Express: 2-3 business days. Tracking updates may lag by 24 hours."
+    tips: "Standard shipping: 5-7 business days. Tracking updates may lag up to 24 hours."
   }
 ];
 
-function SupportCheatSheet() {
+/* ---------- Main component (no JSX) ---------- */
+function SupportCheatSheet () {
   const [data] = useState(initialData);
   const [selectedBrand, setSelectedBrand] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showItems, setShowItems] = useState([]);
+  const [view, setView] = useState('list'); // 'list' | 'board' | 'detailed'
+  const [showItems, setShowItems] = useState([]); // stagger reveal ids
+  const [hoveredId, setHoveredId] = useState(null);
 
   const brands = useMemo(() => [...new Set(data.map(d => d.brand))], [data]);
-  const categories = useMemo(() => selectedBrand ? [...new Set(data.filter(d => d.brand===selectedBrand).map(d=>d.category))] : [], [selectedBrand, data]);
-  const subcategories = useMemo(() => (selectedBrand && selectedCategory) ? [...new Set(data.filter(d => d.brand===selectedBrand && d.category===selectedCategory).map(d=>d.subcategory))] : [], [selectedBrand, selectedCategory, data]);
+  const categories = useMemo(() => selectedBrand ? [...new Set(data.filter(d => d.brand===selectedBrand).map(d => d.category))] : [], [selectedBrand, data]);
+  const subcategories = useMemo(() => (selectedBrand && selectedCategory) ? [...new Set(data.filter(d => d.brand===selectedBrand && d.category===selectedCategory).map(d => d.subcategory))] : [], [selectedBrand, selectedCategory, data]);
 
-  const filteredData = useMemo(() =>
-    data.filter(d => 
+  const filteredData = useMemo(() => {
+    const q = (searchTerm || '').trim().toLowerCase();
+    return data.filter(d =>
       (!selectedBrand || d.brand === selectedBrand) &&
       (!selectedCategory || d.category === selectedCategory) &&
       (!selectedSubcategory || d.subcategory === selectedSubcategory) &&
-      (!searchTerm || d.title.toLowerCase().includes(searchTerm.toLowerCase()) || d.steps.some(s => s.toLowerCase().includes(searchTerm.toLowerCase())))
-    ),
-    [data, selectedBrand, selectedCategory, selectedSubcategory, searchTerm]
-  );
+      (!q || d.title.toLowerCase().includes(q) || d.steps.some(s => s.toLowerCase().includes(q)) || (d.tips || '').toLowerCase().includes(q))
+    );
+  }, [data, selectedBrand, selectedCategory, selectedSubcategory, searchTerm]);
 
+  // stagger reveal on filteredData change
   useEffect(() => {
     setShowItems([]);
-    filteredData.forEach((item, index) => {
-      setTimeout(() => {
-        setShowItems(prev => [...prev, item.id]);
-      }, index * 150); // stagger animation
+    // small delay to allow CSS transitions to reset
+    filteredData.forEach((it, idx) => {
+      setTimeout(() => setShowItems(prev => [...prev, it.id]), idx * 90);
     });
-  }, [filteredData]);
+  }, [filteredData, view]);
 
-  function resetFilters() {
+  function resetFilters () {
     setSelectedBrand(''); setSelectedCategory(''); setSelectedSubcategory(''); setSearchTerm('');
   }
 
-  return React.createElement('div', { className: "min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8 font-sans" },
-    React.createElement('div', { className: "max-w-5xl mx-auto" },
-      // Header
-      React.createElement('div', { className: "bg-white p-6 rounded-lg shadow mb-6" },
-        React.createElement('h1', { className: "text-2xl font-bold mb-1" }, "Support Agent Cheat Sheet"),
-        React.createElement('p', { className: "text-gray-600" }, "Quick answers and step-by-step guides")
-      ),
-      // Filters
-      React.createElement('div', { className: "bg-white p-4 rounded-lg shadow mb-6 grid md:grid-cols-4 gap-4 items-end" },
-        React.createElement('input', { type: "text", placeholder: "Search...", value: searchTerm, onChange: e=>setSearchTerm(e.target.value), className: "border px-3 py-2 rounded w-full md:col-span-4 focus:ring-2 focus:ring-indigo-300 transition" }),
-        React.createElement('select', { value: selectedBrand, onChange: e => { setSelectedBrand(e.target.value); setSelectedCategory(''); setSelectedSubcategory(''); }, className: "border px-3 py-2 rounded w-full hover:scale-105 transition transform duration-200 ease-out" },
-          React.createElement('option', { value: "" }, "All Brands"),
-          brands.map(b => React.createElement('option', { key: b }, b))
+  // helper: highlight matched keywords in text (returns array of nodes via React.createElement)
+  function highlightText(text, q) {
+    if(!q) return text;
+    const lower = text.toLowerCase();
+    const ql = q.toLowerCase();
+    let parts = [], last = 0;
+    let idx = lower.indexOf(ql, last);
+    while(idx !== -1) {
+      if(idx > last) parts.push(text.slice(last, idx));
+      parts.push( React.createElement('mark', { key: last, className: "bg-yellow-200 rounded px-0.5" }, text.slice(idx, idx+ql.length)) );
+      last = idx + ql.length;
+      idx = lower.indexOf(ql, last);
+    }
+    if(last < text.length) parts.push(text.slice(last));
+    return parts;
+  }
+
+  /* ---------- Render ---------- */
+  return React.createElement('div', { className: "min-h-screen p-6 md:p-10 bg-white" },
+    React.createElement('div', { className: "max-w-6xl mx-auto" },
+
+      // header + view controls
+      React.createElement('div', { className: "flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6" },
+        React.createElement('div', { className: "space-y-1" },
+          React.createElement('h1', { className: "text-2xl font-semibold text-slate-900" }, "Support Agent Cheat Sheet"),
+          React.createElement('p', { className: "text-sm text-slate-500" }, "Quick answers, now with better UI and views")
         ),
-        React.createElement('select', { value: selectedCategory, onChange: e => { setSelectedCategory(e.target.value); setSelectedSubcategory(''); }, className: "border px-3 py-2 rounded w-full hover:scale-105 transition transform duration-200 ease-out", disabled: !selectedBrand },
-          React.createElement('option', { value: "" }, "All Categories"),
-          categories.map(c => React.createElement('option', { key: c }, c))
-        ),
-        React.createElement('select', { value: selectedSubcategory, onChange: e => setSelectedSubcategory(e.target.value), className: "border px-3 py-2 rounded w-full hover:scale-105 transition transform duration-200 ease-out", disabled: !selectedCategory },
-          React.createElement('option', { value: "" }, "All Subcategories"),
-          subcategories.map(s => React.createElement('option', { key: s }, s))
-        ),
-        React.createElement('button', { onClick: resetFilters, className: "bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 hover:scale-105 active:scale-95 transition transform duration-200 w-full md:col-span-4" }, "Reset Filters")
-      ),
-      // Results with animations
-      React.createElement('div', { className: "space-y-4" },
-        filteredData.length === 0 ? React.createElement('div', { className: "bg-white p-6 rounded shadow text-center text-gray-500" }, "No results found") :
-        filteredData.map(item =>
-          React.createElement('div', { 
-            key: item.id, 
-            className: `bg-white p-6 rounded shadow transform transition-all duration-500 ease-out cursor-pointer hover:-translate-y-1 hover:shadow-xl ${showItems.includes(item.id) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`
-          },
-            React.createElement('div', { className: "flex flex-wrap gap-2 mb-2" },
-              React.createElement('span', { className: "px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs" }, item.brand),
-              React.createElement('span', { className: "px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs" }, item.category),
-              React.createElement('span', { className: "px-2 py-1 bg-green-100 text-green-800 rounded text-xs" }, item.subcategory)
-            ),
-            React.createElement('h2', { className: "text-xl font-bold mb-2" }, item.title),
-            React.createElement('ol', { className: "list-decimal list-inside space-y-1 mb-2" },
-              item.steps.map((s,i) => React.createElement('li', { key: i }, s))
-            ),
-            item.tips ? React.createElement('div', { className: "bg-yellow-50 border-l-4 border-yellow-400 p-2 rounded text-yellow-700" }, "💡 ", item.tips) : null
+        React.createElement('div', { className: "flex items-center gap-2" },
+          // view buttons
+          ['list','board','detailed'].map(v =>
+            React.createElement('button', {
+              key: v,
+              onClick: () => setView(v),
+              className: `px-3 py-1.5 rounded-md text-sm font-medium transition transform ${view === v ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-white text-slate-700 border border-slate-200 hover:scale-105' }`
+            }, v === 'list' ? 'List' : v === 'board' ? 'Board' : 'Detailed')
           )
         )
-      )
-    )
-  );
-}
+      ),
 
-ReactDOM.render(
-  React.createElement(SupportCheatSheet),
-  document.getElementById('root')
-);
-</script>
+      // filters
+      React.createElement('div', { className: "bg-white p-4 rounded-lg shadow mb-6 grid md:grid-cols-4 gap-4 items-end" },
+        React.createElement('input', {
+          type: "text",
+          placeholder: "Search title / steps / tips...",
+          value: searchTerm,
+          onChange: e => setSearchTerm(e.target.value),
+          className: "col-span-4 md:col-span-4 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
+        }),
+        React.createElement('select', {
+          value: selectedBrand,
+          onChange: e => { setSelectedBrand(e.target.value); setSelectedCategory(''); setSelectedSubcategory(''); },
+          className: "border rounded px-3 py-2 hover:scale-105 transition transform"
+        },
+          React.createElement('option', { value: "" }, "All Brands"),
+          brands.map(b => React.createElement('option', { key: b, value: b }, b))
+        ),
+        React.createElement('select', {
+          value: selectedCategory,
+          onChange: e => { setSelectedCategory(e.target.value); setSelectedSubcategory(''); },
+          disabled: !selectedBrand,
+          className: "border rounded px-3 py-2 disabled:opacity-50 hover:scale-105 transition transform"
+        },
+          React.createElement('option', { value: "" }, "All Categories"),
+          categories.map(c => React.createElement('option', { key: c, value: c }, c))
+        ),
+        React.createElement('select', {
+          value: selectedSubcategory,
+          onChange: e => setSelectedSubcategory(e.target.value),
+          disabled: !selectedCategory,
+          className: "border rounded px-3 py-2 disabled:opacity-50 hover:scale-105 transition transform"
+        },
+          React.createElement('option', { value: "" }, "All Subcategories"),
+          subcategories.map(s => React.createElement('option', { key: s, value: s }, s))
+        ),
+        React.createElement('button', {
+          onClick: resetFilters,
+          className: "md:col-span-4 bg-gray-100 px-4 py-2 rounded-md hover:bg-gray-200 active:scale-95 transition"
+        }, "Reset Filters")
+      ),
 
-</body>
-</html>
+      // results wrapper - we dim background when hovering a card
+      React.createElement('div', { className: "relative" },
+        // semi-transparent full width dim layer (only visible when hovered)
+        React.createElement('div', {
+          className: `absolute inset-0 pointer-events-none transition-opacity duration-300 ${hoveredId ? 'opacity-40 bg-slate-100' : 'opacity-0' } rounded-lg`
+        }),
+
+        // container for different views
+        React.createElement('div', {
+          className: `${view === 'board' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : ''}`
+        },
+
+          // when no results
+          filteredData.length === 0
+            ? React.createElement('div', { className: "bg-white p-6 rounded shadow text-center text-slate-500" }, "No results found")
+            : filteredData.map(item => {
+                // card base classes + view-specific sizing
+                const base = "bg-white p-5 rounded-lg transition-transform duration-400 ease-out";
+                const viewClass = view === 'list' ? "w-full" : view === 'board' ? "" : "w-full";
+                const hoverOn = hoveredId === item.id;
+                const dimmed = hoveredId && hoveredId !== item.id;
+                const show = showItems.includes(item.id);
+
+                const cardClasses = `${base} ${viewClass} ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'} ${hoverOn ? 'card-glow scale-102' : ''} ${dimmed ? 'opacity-40' : ''}`;
+
+                // build card content
+                return React.createElement('div', {
+                  key: item.id,
+                  onMouseEnter: () => setHoveredId(item.id),
+                  onMouseLeave: () => setHoveredId(null),
+                  className: cardClasses,
+                  style: { transformOrigin: 'center top', transitionProperty: 'transform, opacity, box-shadow' }
+                },
+                  // badges and title row
+                  React.createElement('div', { className: "flex items-center justify-between gap-2 mb-3" },
+                    React.createElement('div', { className: "flex flex-wrap gap-2 items-center" },
+                      React.createElement('span', { className: "px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs" }, item.brand),
+                      React.createElement('span', { className: "px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs" }, item.category),
+                      React.createElement('span', { className: "px-2 py-1 bg-green-100 text-green-800 rounded text-xs" }, item.subcategory)
+                    ),
+                    React.createElement('div', { className: "text-sm text-slate-400" }, view === 'detailed' ? React.createElement('span', null, 'Detailed') : null)
+                  ),
+
+                  // title
+                  React.createElement('h2', { className: `text-lg font-semibold mb-2 ${hoverOn ? 'text-indigo-600' : 'text-slate-900'}` }, highlightText(item.title, searchTerm)),
+
+                  // steps (compact in list, grid/card in board, expanded in detailed)
+                  React.createElement('div', { className: view === 'detailed' ? 'mb-3' : 'mb-2' },
+                    React.
